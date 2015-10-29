@@ -1,0 +1,3 @@
+-h2-console über application anstatt web.xml
+-rename Hibwernate to JPA
+-Transactions

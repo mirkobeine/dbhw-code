@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings version="1.0"
+	xmlns="http://java.sun.com/xml/ns/persistence/orm" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm orm_1_0.xsd">
+	<description>The minimal mappings for a persistent entity in XML.
+	</description>
+	<entity name="Lecture" class="de.dhbw.tinf.ddd.domain.lecture.Lecture"
+		access="FIELD">
+		<attributes>
+			<id name="id">
+				<generated-value />
+			</id>
+			<basic name="name">
+				<column name="name" />
+			</basic>
+			<transient name="studentClass" />
+		</attributes>
+	</entity>
+	<entity name="LectureEvent" class="de.dhbw.tinf.ddd.domain.schedule.LectureEvent"
+		access="FIELD">
+		<attributes>
+			<embedded-id name="lectureEventId" />
+			<transient name="lecture" />
+			<transient name="lectureTime" />
+		</attributes>
+	</entity>
+	<embeddable class="de.dhbw.tinf.ddd.domain.schedule.LectureEventId" access="FIELD">
+		<attributes>
+			<basic name="id" />
+		</attributes>
+	</embeddable>
+</entity-mappings>
