@@ -7,10 +7,7 @@ import javax.naming.Reference;
 import org.eclipse.jetty.jmx.MBeanContainer;
 import org.eclipse.jetty.plus.jndi.Resource;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.ServletHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.webapp.WebAppContext;
-import org.h2.server.web.WebServlet;
 
 public class Application {
 

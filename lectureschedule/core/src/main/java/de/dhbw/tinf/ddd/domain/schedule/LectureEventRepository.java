@@ -16,7 +16,7 @@ public interface LectureEventRepository {
 
 	List<LectureEvent> findAllWithin(Period period);
 	
-	void store(LectureEvent lectureEvent);
+	void create(LectureEvent lectureEvent);
 	
 	LectureEventId nextLectureEventId();
 }

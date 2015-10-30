@@ -28,7 +28,7 @@ public class Application {
 			
 			LectureEvent lectureEvent = new LectureEvent(eventId, null, null);
 			
-			lectureEventRepository.store(lectureEvent);
+			lectureEventRepository.create(lectureEvent);
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {

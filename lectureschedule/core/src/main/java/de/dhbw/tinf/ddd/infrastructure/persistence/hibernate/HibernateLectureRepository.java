@@ -5,7 +5,6 @@ import javax.enterprise.inject.Default;
 import javax.persistence.EntityManager;
 
 import de.dhbw.tinf.ddd.domain.lecture.Lecture;
-import de.dhbw.tinf.ddd.domain.lecture.LectureId;
 import de.dhbw.tinf.ddd.domain.lecture.LectureRepository;
 
 @Default
@@ -13,7 +12,7 @@ import de.dhbw.tinf.ddd.domain.lecture.LectureRepository;
 public class HibernateLectureRepository extends HibernateRepository<Lecture> implements LectureRepository {
 
 	@Override
-	public Lecture findById(LectureId id) {
+	public Lecture findById(Long id) {
 		EntityManager entityManager = getEntityManager();
 		return entityManager.find(Lecture.class, id);
 	}

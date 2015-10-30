@@ -10,7 +10,6 @@ import javax.enterprise.inject.Default;
 import javax.inject.Inject;
 
 import de.dhbw.tinf.ddd.domain.lecture.Lecture;
-import de.dhbw.tinf.ddd.domain.lecture.LectureId;
 import de.dhbw.tinf.ddd.domain.lecture.LectureRepository;
 import de.dhbw.tinf.ddd.domain.schedule.LectureEvent;
 import de.dhbw.tinf.ddd.domain.schedule.LectureEventId;
@@ -18,8 +17,8 @@ import de.dhbw.tinf.ddd.domain.schedule.LectureEventRepository;
 import de.dhbw.tinf.ddd.domain.schedule.LectureTime;
 import de.dhbw.tinf.ddd.domain.schedule.SchedulingService;
 
-@RequestScoped
 @Default
+@RequestScoped
 public class CalendarApplicationService {
 
 	@Inject
@@ -30,14 +29,6 @@ public class CalendarApplicationService {
 	
 	@Inject
 	private SchedulingService schedulingService;
-
-	public CalendarApplicationService(
-			final LectureEventRepository lectureEventRepository,
-			final SchedulingService schedulingService) {
-		super();
-		this.lectureEventRepository = lectureEventRepository;
-		this.schedulingService = schedulingService;
-	}
 
 	public void rescheduleLectureEvent(final LectureEventId lectureEventId,
 			final LocalDate toDay, final LocalTime shouldBeginAt, final LocalTime shouldEndAt) {
@@ -52,7 +43,7 @@ public class CalendarApplicationService {
 				plannedLectureTime); 
 	}
 
-	public LectureEvent scheduleLectureEvent(LectureId lectureId,
+	public LectureEvent scheduleLectureEvent(Long lectureId,
 			LocalDate day, LocalTime shouldBeginAt, LocalTime shouldEndAt) {
 		LectureEventId lectureEventId = this.lectureEventRepository
 				.nextLectureEventId();
@@ -63,11 +54,13 @@ public class CalendarApplicationService {
 
 		LectureEvent lectureEvent = new LectureEvent(lectureEventId, lecture,
 				lectureTime);
+		
+		this.lectureEventRepository.create(lectureEvent);
 
 		return lectureEvent;
 	}
 
-	public void deleteLectureEvent(LectureEventId lectureEventId) {
+	public void unscheduleLectureEvent(LectureEventId lectureEventId) {
 
 	}
 

@@ -3,11 +3,18 @@ package de.dhbw.tinf.ddd.domain.schedule;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-public final class LectureTime {
+public class LectureTime {
 
 	private LocalDate lectureDay;
 	private LocalTime beginsAt;
 	private LocalTime endsAt;
+
+	/**
+	 * needed for JPA
+	 */
+	protected LectureTime() {
+		super();
+	}
 
 	public LectureTime(LocalDate lectureDay, LocalTime beginsAt,
 			LocalTime endsAt) {

@@ -6,7 +6,7 @@ public class LectureEventId implements Serializable{
 
 	private static final long serialVersionUID = -9008552966485348466L;
 	
-	private String id;
+	private final String id;
 
 	public LectureEventId(final String id) {
 		super();
@@ -16,8 +16,8 @@ public class LectureEventId implements Serializable{
 	/**
 	 * needed by Hibernate/JPA
 	 */
-	public LectureEventId() {
-		super();
+	protected LectureEventId() {
+		this(null);
 	}
 
 	public String getId() {

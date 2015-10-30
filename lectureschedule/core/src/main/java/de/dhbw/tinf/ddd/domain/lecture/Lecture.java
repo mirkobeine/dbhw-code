@@ -4,9 +4,6 @@ import de.dhbw.tinf.ddd.domain.studentclass.StudentClass;
 
 public class Lecture {
 
-	/**
-	 * ID is managed by ORM
-	 */
 	private Long id;
 	
 	private String name;
@@ -18,10 +15,16 @@ public class Lecture {
 		this.studentClass = studentClass;
 	}
 	
+	/**
+	 * needed by JPA
+	 */
 	protected Lecture() {
-		
 	}
 	
+	public Long getId() {
+		return id;
+	}
+
 	public String getName() {
 		return name;
 	}

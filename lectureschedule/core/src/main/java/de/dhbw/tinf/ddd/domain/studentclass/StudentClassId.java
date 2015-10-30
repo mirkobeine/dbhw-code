@@ -1,8 +1,12 @@
 package de.dhbw.tinf.ddd.domain.studentclass;
 
-public final class StudentClassId {
+import java.io.Serializable;
 
-	private String id;
+public final class StudentClassId implements Serializable{
+
+	private static final long serialVersionUID = 7351170232871369137L;
+	
+	private final String id;
 
 	public StudentClassId(String id) {
 		super();
@@ -13,7 +17,7 @@ public final class StudentClassId {
 	 * needed by Hibernate/JPA
 	 */
 	public StudentClassId() {
-		super();
+		this(null);
 	}
 
 	@Override

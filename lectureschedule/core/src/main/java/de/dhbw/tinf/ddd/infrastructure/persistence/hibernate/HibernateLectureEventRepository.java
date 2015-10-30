@@ -41,7 +41,7 @@ public class HibernateLectureEventRepository extends HibernateRepository<Lecture
 		return null;
 	}
 	
-	public void store(LectureEvent lectureEvent) {
+	public void create(LectureEvent lectureEvent) {
 		persist(lectureEvent);
 	}
 

@@ -1,10 +1,18 @@
 package de.dhbw.tinf.ddd.infrastructure.ui;
 
 import java.text.DateFormatSymbols;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.Period;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Locale;
 import java.util.Map;
+
+import javax.inject.Inject;
 
 import com.vaadin.annotations.Theme;
 import com.vaadin.cdi.CDIUI;
@@ -48,889 +56,896 @@ import com.vaadin.ui.components.calendar.event.CalendarEvent;
 import com.vaadin.ui.components.calendar.handler.BasicDateClickHandler;
 import com.vaadin.ui.components.calendar.handler.BasicWeekClickHandler;
 
+import de.dhbw.tinf.ddd.application.CalendarApplicationService;
+import de.dhbw.tinf.ddd.application.LectureApplicationService;
+import de.dhbw.tinf.ddd.domain.lecture.Lecture;
+import de.dhbw.tinf.ddd.domain.schedule.LectureEvent;
+import de.dhbw.tinf.ddd.domain.studentclass.StudentClass;
+import de.dhbw.tinf.ddd.domain.studentclass.StudentClassId;
+import de.dhbw.tinf.ddd.domain.studentclass.StudentClassRepository;
+
 @CDIUI("")
 @Theme("valo")
 @SuppressWarnings("serial")
 public class LectureScheduleUi extends UI {
 
-    private static final long serialVersionUID = -5436777475398410597L;
+	@Inject
+	private CalendarApplicationService calendarApplicationService;
 
-    private enum Mode {
-        MONTH, WEEK, DAY;
-    }
+	@Inject
+	private LectureApplicationService lectureApplicationService;
 
-    /**
-     * This Gregorian calendar is used to control dates and time inside of this
-     * test application.
-     */
-    private GregorianCalendar calendar;
+	@Inject
+	private StudentClassRepository studentClassRepository;
 
-    /** Target calendar component that this test application is made for. */
-    private Calendar calendarComponent;
+	private static final long serialVersionUID = -5436777475398410597L;
 
-    private Date currentMonthsFirstDate;
+	private enum Mode {
+		MONTH, WEEK, DAY;
+	}
 
-    private final Label captionLabel = new Label("");
+	/**
+	 * This Gregorian calendar is used to control dates and time inside of this
+	 * test application.
+	 */
+	private GregorianCalendar calendar;
 
-    private Button monthButton;
+	/** Target calendar component that this test application is made for. */
+	private Calendar calendarComponent;
 
-    private Button weekButton;
+	private Date currentMonthsFirstDate;
 
-    private Button nextButton;
+	private final Label captionLabel = new Label("");
 
-    private Button prevButton;
+	private Button monthButton;
 
-    private TextField captionField;
+	private Button weekButton;
 
-    private Window scheduleEventPopup;
+	private Button nextButton;
 
-    private final FormLayout scheduleEventFieldLayout = new FormLayout();
-    private FieldGroup scheduleEventFieldGroup = new FieldGroup();
+	private Button prevButton;
 
-    private Button deleteEventButton;
+	private TextField captionField;
 
-    private Button applyEventButton;
+	private Window scheduleEventPopup;
 
-    private Mode viewMode = Mode.WEEK;
+	private final FormLayout scheduleEventFieldLayout = new FormLayout();
+	private FieldGroup scheduleEventFieldGroup = new FieldGroup();
 
-    private BasicEventProvider dataSource;
+	private Button deleteEventButton;
 
-    private Button addNewEvent;
+	private Button applyEventButton;
 
-    /*
-     * When testBench is set to true, CalendarTest will have static content that
-     * is more suitable for Vaadin TestBench testing. Calendar will use a static
-     * date Mon 10 Jan 2000. Enable by starting the application with a
-     * "testBench" parameter in the URL.
-     */
-    private boolean testBench = false;
+	private Mode viewMode = Mode.WEEK;
 
-    private String calendarHeight = null;
+	private BasicEventProvider dataSource;
 
-    private String calendarWidth = null;
+	private Button addNewEvent;
 
-    private Integer firstHour;
+	/*
+	 * When testBench is set to true, CalendarTest will have static content that
+	 * is more suitable for Vaadin TestBench testing. Calendar will use a static
+	 * date Mon 10 Jan 2000. Enable by starting the application with a
+	 * "testBench" parameter in the URL.
+	 */
+	private boolean testBench = false;
 
-    private Integer lastHour;
+	private String calendarHeight = null;
 
-    private Integer firstDay;
+	private String calendarWidth = null;
 
-    private Integer lastDay;
+	private Integer firstHour;
 
-    private Locale defaultLocale = Locale.US;
+	private Integer lastHour;
 
-    private boolean useSecondResolution;
+	private Integer firstDay;
 
-    private DateField startDateField;
-    private DateField endDateField;
+	private Integer lastDay;
 
-    @SuppressWarnings("serial")
-    @Override
-    public void init(VaadinRequest request) {
-        GridLayout layout = new GridLayout();
-        layout.setSizeFull();
-        layout.setMargin(true);
-        setContent(layout);
+	private Locale defaultLocale = Locale.US;
 
-        handleURLParams(request.getParameterMap());
+	private boolean useSecondResolution;
 
-        initContent();
-    }
+	private DateField startDateField;
+	private DateField endDateField;
 
-    private void handleURLParams(Map<String, String[]> parameters) {
-    	//TODO kann weg
-        testBench = parameters.containsKey("testBench")
-                || parameters.containsKey("?testBench");
+	@SuppressWarnings("serial")
+	@Override
+	public void init(VaadinRequest request) {
+		GridLayout layout = new GridLayout();
+		layout.setSizeFull();
+		layout.setMargin(true);
+		setContent(layout);
 
-        if (parameters.containsKey("width")) {
-            calendarWidth = parameters.get("width")[0];
-        }
+		handleURLParams(request.getParameterMap());
 
-        if (parameters.containsKey("height")) {
-            calendarHeight = parameters.get("height")[0];
-        }
+		initContent();
+	}
 
-        if (parameters.containsKey("firstDay")) {
-            firstDay = Integer.parseInt(parameters.get("firstDay")[0]);
-        }
+	private void handleURLParams(Map<String, String[]> parameters) {
+		// TODO kann weg
+		testBench = parameters.containsKey("testBench") || parameters.containsKey("?testBench");
 
-        if (parameters.containsKey("lastDay")) {
-            lastDay = Integer.parseInt(parameters.get("lastDay")[0]);
-        }
-
-        if (parameters.containsKey("firstHour")) {
-            firstHour = Integer.parseInt(parameters.get("firstHour")[0]);
-        }
-
-        if (parameters.containsKey("lastHour")) {
-            lastHour = Integer.parseInt(parameters.get("lastHour")[0]);
-        }
-
-        if (parameters.containsKey("locale")) {
-            String localeArray[] = parameters.get("locale")[0].split("_");
-            defaultLocale = new Locale(localeArray[0], localeArray[1]);
-            setLocale(defaultLocale);
-        }
-
-        if (parameters.containsKey(("secondsResolution"))) {
-            useSecondResolution = true;
-        }
-    }
-
-    public void initContent() {
-        // Set default Locale for this application
-        if (testBench) {
-            setLocale(defaultLocale);
-
-        } else {
-            setLocale(Locale.getDefault());
-        }
-
-        initCalendar();
-        initLayoutContent();
-        addInitialEvents();
-    }
-
-    private Date resolveFirstDateOfWeek(Date today,
-            java.util.Calendar currentCalendar) {
-        int firstDayOfWeek = currentCalendar.getFirstDayOfWeek();
-        currentCalendar.setTime(today);
-        while (firstDayOfWeek != currentCalendar
-                .get(java.util.Calendar.DAY_OF_WEEK)) {
-            currentCalendar.add(java.util.Calendar.DATE, -1);
-        }
-        return currentCalendar.getTime();
-    }
-
-    private Date resolveLastDateOfWeek(Date today,
-            java.util.Calendar currentCalendar) {
-        currentCalendar.setTime(today);
-        currentCalendar.add(java.util.Calendar.DATE, 1);
-        int firstDayOfWeek = currentCalendar.getFirstDayOfWeek();
-        // Roll to weeks last day using firstdayofweek. Roll until FDofW is
-        // found and then roll back one day.
-        while (firstDayOfWeek != currentCalendar
-                .get(java.util.Calendar.DAY_OF_WEEK)) {
-            currentCalendar.add(java.util.Calendar.DATE, 1);
-        }
-        currentCalendar.add(java.util.Calendar.DATE, -1);
-        return currentCalendar.getTime();
-    }
-
-    private void addInitialEvents() {
-        Date originalDate = calendar.getTime();
-        Date today = getToday();
-
-        // Add a event that last a whole week
-
-        Date start = resolveFirstDateOfWeek(today, calendar);
-        Date end = resolveLastDateOfWeek(today, calendar);
-        CalendarTestEvent event = getNewEvent("Whole week event", start, end);
-        event.setAllDay(true);
-        event.setStyleName("color4");
-        event.setDescription("Description for the whole week event.");
-        dataSource.addEvent(event);
-
-        // Add a allday event
-        calendar.setTime(start);
-        calendar.add(GregorianCalendar.DATE, 3);
-        start = calendar.getTime();
-        end = start;
-        event = getNewEvent("Allday event", start, end);
-        event.setAllDay(true);
-        event.setDescription("Some description.");
-        event.setStyleName("color3");
-        dataSource.addEvent(event);
-
-        // Add a second allday event
-        calendar.add(GregorianCalendar.DATE, 1);
-        start = calendar.getTime();
-        end = start;
-        event = getNewEvent("Second allday event", start, end);
-        event.setAllDay(true);
-        event.setDescription("Some description.");
-        event.setStyleName("color2");
-        dataSource.addEvent(event);
-
-        calendar.add(GregorianCalendar.DATE, -3);
-        calendar.set(GregorianCalendar.HOUR_OF_DAY, 9);
-        calendar.set(GregorianCalendar.MINUTE, 30);
-        start = calendar.getTime();
-        calendar.add(GregorianCalendar.HOUR_OF_DAY, 5);
-        calendar.set(GregorianCalendar.MINUTE, 0);
-        end = calendar.getTime();
-        event = getNewEvent("Appointment", start, end);
-        event.setWhere("Office");
-        event.setStyleName("color1");
-        event.setDescription("A longer description, which should display correctly.");
-        dataSource.addEvent(event);
-
-        calendar.add(GregorianCalendar.DATE, 1);
-        calendar.set(GregorianCalendar.HOUR_OF_DAY, 11);
-        calendar.set(GregorianCalendar.MINUTE, 0);
-        start = calendar.getTime();
-        calendar.add(GregorianCalendar.HOUR_OF_DAY, 8);
-        end = calendar.getTime();
-        event = getNewEvent("Training", start, end);
-        event.setStyleName("color2");
-        dataSource.addEvent(event);
-
-        calendar.add(GregorianCalendar.DATE, 4);
-        calendar.set(GregorianCalendar.HOUR_OF_DAY, 9);
-        calendar.set(GregorianCalendar.MINUTE, 0);
-        start = calendar.getTime();
-        calendar.add(GregorianCalendar.HOUR_OF_DAY, 9);
-        end = calendar.getTime();
-        event = getNewEvent("Free time", start, end);
-        dataSource.addEvent(event);
-
-        calendar.setTime(originalDate);
-    }
-
-    private void initLayoutContent() {
-        initNavigationButtons();
-        initAddNewEventButton();
-
-        HorizontalLayout hl = new HorizontalLayout();
-        hl.setWidth("100%");
-        hl.setSpacing(true);
-        hl.setMargin(new MarginInfo(false, false, true, false));
-        hl.addComponent(prevButton);
-        hl.addComponent(captionLabel);
-        hl.addComponent(monthButton);
-        hl.addComponent(weekButton);
-        hl.addComponent(nextButton);
-        hl.setComponentAlignment(prevButton, Alignment.MIDDLE_LEFT);
-        hl.setComponentAlignment(captionLabel, Alignment.MIDDLE_CENTER);
-        hl.setComponentAlignment(monthButton, Alignment.MIDDLE_CENTER);
-        hl.setComponentAlignment(weekButton, Alignment.MIDDLE_CENTER);
-        hl.setComponentAlignment(nextButton, Alignment.MIDDLE_RIGHT);
-
-        monthButton.setVisible(true);
-        weekButton.setVisible(true);
-
-        HorizontalLayout controlPanel = new HorizontalLayout();
-        controlPanel.setSpacing(true);
-        controlPanel.setMargin(new MarginInfo(false, false, true, false));
-        controlPanel.setWidth("100%");
-        controlPanel.addComponent(addNewEvent);
-        controlPanel.setComponentAlignment(addNewEvent, Alignment.MIDDLE_LEFT);
-
-        GridLayout layout = (GridLayout) getContent();
-        layout.addComponent(controlPanel);
-        layout.addComponent(hl);
-        layout.addComponent(calendarComponent);
-        layout.setRowExpandRatio(layout.getRows() - 1, 1.0f);
-    }
-
-    private void initNavigationButtons() {
-        monthButton = new Button("Month view", new ClickListener() {
-
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void buttonClick(ClickEvent event) {
-                switchToMonthView();
-            }
-        });
-
-        weekButton = new Button("Week view", new ClickListener() {
-
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void buttonClick(ClickEvent event) {
-                // simulate week click
-                WeekClickHandler handler = (WeekClickHandler) calendarComponent
-                        .getHandler(WeekClick.EVENT_ID);
-                handler.weekClick(new WeekClick(calendarComponent, calendar
-                        .get(GregorianCalendar.WEEK_OF_YEAR), calendar
-                        .get(GregorianCalendar.YEAR)));
-            }
-        });
-
-        nextButton = new Button("Next", new Button.ClickListener() {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void buttonClick(ClickEvent event) {
-                handleNextButtonClick();
-            }
-        });
-
-        prevButton = new Button("Prev", new Button.ClickListener() {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void buttonClick(ClickEvent event) {
-                handlePreviousButtonClick();
-            }
-        });
-    }
-
-
-    public void initAddNewEventButton() {
-        addNewEvent = new Button("Add new event");
-        addNewEvent.addClickListener(new Button.ClickListener() {
-
-            private static final long serialVersionUID = -8307244759142541067L;
-
-            @Override
-            public void buttonClick(ClickEvent event) {
-                Date start = getToday();
-                start.setHours(0);
-                start.setMinutes(0);
-                start.setSeconds(0);
-
-                Date end = getEndOfDay(calendar, start);
-
-                showEventPopup(createNewEvent(start, end), true);
-            }
-        });
-    }
-
-    private void initFormFields(Layout formLayout,
-            Class<? extends CalendarEvent> eventClass) {
-
-        startDateField = createDateField("Start date");
-        endDateField = createDateField("End date");
-
-        final CheckBox allDayField = createCheckBox("All-day");
-        allDayField.addValueChangeListener(new Property.ValueChangeListener() {
-
-            private static final long serialVersionUID = -7104996493482558021L;
-
-            @Override
-            public void valueChange(ValueChangeEvent event) {
-                Object value = event.getProperty().getValue();
-                if (value instanceof Boolean && Boolean.TRUE.equals(value)) {
-                    setFormDateResolution(Resolution.DAY);
-
-                } else {
-                    setFormDateResolution(Resolution.MINUTE);
-                }
-            }
-
-        });
-
-        captionField = createTextField("Caption");
-        final TextField whereField = createTextField("Where");
-        final TextArea descriptionField = createTextArea("Description");
-        descriptionField.setRows(3);
-
-        final ComboBox styleNameField = createStyleNameComboBox();
-
-        formLayout.addComponent(startDateField);
-        formLayout.addComponent(endDateField);
-        formLayout.addComponent(allDayField);
-        formLayout.addComponent(captionField);
-        if (eventClass == CalendarTestEvent.class) {
-            formLayout.addComponent(whereField);
-        }
-        formLayout.addComponent(descriptionField);
-        formLayout.addComponent(styleNameField);
-
-        scheduleEventFieldGroup.bind(startDateField, "start");
-        scheduleEventFieldGroup.bind(endDateField, "end");
-        scheduleEventFieldGroup.bind(captionField, "caption");
-        scheduleEventFieldGroup.bind(descriptionField, "description");
-        if (eventClass == CalendarTestEvent.class) {
-            scheduleEventFieldGroup.bind(whereField, "where");
-        }
-        scheduleEventFieldGroup.bind(styleNameField, "styleName");
-        scheduleEventFieldGroup.bind(allDayField, "allDay");
-    }
-
-    private CheckBox createCheckBox(String caption) {
-        CheckBox cb = new CheckBox(caption);
-        cb.setImmediate(true);
-        return cb;
-    }
-
-    private TextField createTextField(String caption) {
-        TextField f = new TextField(caption);
-        f.setNullRepresentation("");
-        return f;
-    }
-
-    private TextArea createTextArea(String caption) {
-        TextArea f = new TextArea(caption);
-        f.setNullRepresentation("");
-        return f;
-    }
-
-    private DateField createDateField(String caption) {
-        DateField f = new DateField(caption);
-        if (useSecondResolution) {
-            f.setResolution(Resolution.SECOND);
-        } else {
-            f.setResolution(Resolution.MINUTE);
-        }
-        return f;
-    }
-
-    private ComboBox createStyleNameComboBox() {
-        ComboBox s = new ComboBox("Color");
-        s.addContainerProperty("c", String.class, "");
-        s.setItemCaptionPropertyId("c");
-        Item i = s.addItem("color1");
-        i.getItemProperty("c").setValue("Green");
-        i = s.addItem("color2");
-        i.getItemProperty("c").setValue("Blue");
-        i = s.addItem("color3");
-        i.getItemProperty("c").setValue("Red");
-        i = s.addItem("color4");
-        i.getItemProperty("c").setValue("Orange");
-        return s;
-    }
-
-    private void initCalendar() {
-        dataSource = new BasicEventProvider();
-
-        calendarComponent = new Calendar(dataSource);
-        calendarComponent.setLocale(getLocale());
-        calendarComponent.setImmediate(true);
-
-        if (calendarWidth != null || calendarHeight != null) {
-            if (calendarHeight != null) {
-                calendarComponent.setHeight(calendarHeight);
-            }
-            if (calendarWidth != null) {
-                calendarComponent.setWidth(calendarWidth);
-            }
-        } else {
-            calendarComponent.setSizeFull();
-        }
-
-        if (firstHour != null && lastHour != null) {
-            calendarComponent.setFirstVisibleHourOfDay(firstHour);
-            calendarComponent.setLastVisibleHourOfDay(lastHour);
-        }
-
-        if (firstDay != null && lastDay != null) {
-            calendarComponent.setFirstVisibleDayOfWeek(firstDay);
-            calendarComponent.setLastVisibleDayOfWeek(lastDay);
-        }
-
-        Date today = getToday();
-        calendar = new GregorianCalendar(getLocale());
-        calendar.setTime(today);
-        
-        currentMonthsFirstDate = calendar.getTime();
-
-        updateCaptionLabel();
-
-        addCalendarEventListeners();
-    }
-
-    private Date getToday() {
-        if (testBench) {
-            GregorianCalendar testDate = new GregorianCalendar();
-            testDate.set(GregorianCalendar.YEAR, 2000);
-            testDate.set(GregorianCalendar.MONTH, 0);
-            testDate.set(GregorianCalendar.DATE, 10);
-            testDate.set(GregorianCalendar.HOUR_OF_DAY, 0);
-            testDate.set(GregorianCalendar.MINUTE, 0);
-            testDate.set(GregorianCalendar.SECOND, 0);
-            testDate.set(GregorianCalendar.MILLISECOND, 0);
-            return testDate.getTime();
-        }
-        return new Date();
-    }
-
-    @SuppressWarnings("serial")
-    private void addCalendarEventListeners() {
-        // Register week clicks by changing the schedules start and end dates.
-        calendarComponent.setHandler(new BasicWeekClickHandler() {
-
-            @Override
-            public void weekClick(WeekClick event) {
-                // let BasicWeekClickHandler handle calendar dates, and update
-                // only the other parts of UI here
-                super.weekClick(event);
-                updateCaptionLabel();
-                switchToWeekView();
-            }
-        });
-
-        calendarComponent.setHandler(new EventClickHandler() {
-
-            @Override
-            public void eventClick(EventClick event) {
-                showEventPopup(event.getCalendarEvent(), false);
-            }
-        });
-
-        calendarComponent.setHandler(new BasicDateClickHandler() {
-
-            @Override
-            public void dateClick(DateClickEvent event) {
-                // let BasicDateClickHandler handle calendar dates, and update
-                // only the other parts of UI here
-                super.dateClick(event);
-                switchToDayView();
-            }
-        });
-
-        calendarComponent.setHandler(new RangeSelectHandler() {
-
-            @Override
-            public void rangeSelect(RangeSelectEvent event) {
-                handleRangeSelect(event);
-            }
-        });
-    }
-
-    private void handleNextButtonClick() {
-        switch (viewMode) {
-        case MONTH:
-            nextMonth();
-            break;
-        case WEEK:
-            nextWeek();
-            break;
-        case DAY:
-            nextDay();
-            break;
-        }
-    }
-
-    private void handlePreviousButtonClick() {
-        switch (viewMode) {
-        case MONTH:
-            previousMonth();
-            break;
-        case WEEK:
-            previousWeek();
-            break;
-        case DAY:
-            previousDay();
-            break;
-        }
-    }
-
-    private void handleRangeSelect(RangeSelectEvent event) {
-        Date start = event.getStart();
-        Date end = event.getEnd();
-
-        /*
-         * If a range of dates is selected in monthly mode, we want it to end at
-         * the end of the last day.
-         */
-        if (event.isMonthlyMode()) {
-            end = getEndOfDay(calendar, end);
-        }
-
-        showEventPopup(createNewEvent(start, end), true);
-    }
-
-    private void showEventPopup(CalendarEvent event, boolean newEvent) {
-        if (event == null) {
-            return;
-        }
-
-        updateCalendarEventPopup(newEvent);
-        updateCalendarEventForm(event);
-
-        if (!getWindows().contains(scheduleEventPopup)) {
-            addWindow(scheduleEventPopup);
-        }
-    }
-
-    /* Initializes a modal window to edit schedule event. */
-    private void createCalendarEventPopup() {
-        VerticalLayout layout = new VerticalLayout();
-        layout.setMargin(true);
-        layout.setSpacing(true);
-
-        scheduleEventPopup = new Window(null, layout);
-        scheduleEventPopup.setWidth("400px");
-        scheduleEventPopup.setModal(true);
-        scheduleEventPopup.center();
-
-        layout.addComponent(scheduleEventFieldLayout);
-
-        applyEventButton = new Button("Apply", new ClickListener() {
-
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void buttonClick(ClickEvent event) {
-                try {
-                    commitCalendarEvent();
-                } catch (CommitException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-        Button cancel = new Button("Cancel", new ClickListener() {
-
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void buttonClick(ClickEvent event) {
-                discardCalendarEvent();
-            }
-        });
-        deleteEventButton = new Button("Delete", new ClickListener() {
-
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void buttonClick(ClickEvent event) {
-                deleteCalendarEvent();
-            }
-        });
-        scheduleEventPopup.addCloseListener(new Window.CloseListener() {
-
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void windowClose(Window.CloseEvent e) {
-                discardCalendarEvent();
-            }
-        });
-
-        HorizontalLayout buttons = new HorizontalLayout();
-        buttons.setSpacing(true);
-        buttons.addComponent(deleteEventButton);
-        buttons.addComponent(applyEventButton);
-        buttons.addComponent(cancel);
-        layout.addComponent(buttons);
-        layout.setComponentAlignment(buttons, Alignment.BOTTOM_RIGHT);
-    }
-
-    private void updateCalendarEventPopup(boolean newEvent) {
-        if (scheduleEventPopup == null) {
-            createCalendarEventPopup();
-        }
-
-        if (newEvent) {
-            scheduleEventPopup.setCaption("New event");
-        } else {
-            scheduleEventPopup.setCaption("Edit event");
-        }
-
-        deleteEventButton.setVisible(!newEvent);
-        deleteEventButton.setEnabled(!calendarComponent.isReadOnly());
-        applyEventButton.setEnabled(!calendarComponent.isReadOnly());
-    }
-
-    private void updateCalendarEventForm(CalendarEvent event) {
-        BeanItem<CalendarEvent> item = new BeanItem<CalendarEvent>(event);
-        scheduleEventFieldLayout.removeAllComponents();
-        scheduleEventFieldGroup = new FieldGroup();
-        initFormFields(scheduleEventFieldLayout, event.getClass());
-        scheduleEventFieldGroup.setBuffered(true);
-        scheduleEventFieldGroup.setItemDataSource(item);
-    }
-
-    private void setFormDateResolution(Resolution resolution) {
-        if (startDateField != null && endDateField != null) {
-            startDateField.setResolution(resolution);
-            endDateField.setResolution(resolution);
-        }
-    }
-
-    private CalendarEvent createNewEvent(Date startDate, Date endDate) {
-
-        BasicEvent event = new BasicEvent();
-        event.setCaption("");
-        event.setStart(startDate);
-        event.setEnd(endDate);
-        event.setStyleName("color1");
-        return event;
-    }
-
-    /* Removes the event from the data source and fires change event. */
-    private void deleteCalendarEvent() {
-        BasicEvent event = getFormCalendarEvent();
-        if (dataSource.containsEvent(event)) {
-            dataSource.removeEvent(event);
-        }
-        removeWindow(scheduleEventPopup);
-    }
-
-    /* Adds/updates the event in the data source and fires change event. */
-    private void commitCalendarEvent() throws CommitException {
-        scheduleEventFieldGroup.commit();
-        BasicEvent event = getFormCalendarEvent();
-        if (event.getEnd() == null) {
-            event.setEnd(event.getStart());
-        }
-        if (!dataSource.containsEvent(event)) {
-            dataSource.addEvent(event);
-        }
-
-        removeWindow(scheduleEventPopup);
-    }
-
-    private void discardCalendarEvent() {
-        scheduleEventFieldGroup.discard();
-        removeWindow(scheduleEventPopup);
-    }
-
-    @SuppressWarnings("unchecked")
-    private BasicEvent getFormCalendarEvent() {
-        BeanItem<CalendarEvent> item = (BeanItem<CalendarEvent>) scheduleEventFieldGroup
-                .getItemDataSource();
-        CalendarEvent event = item.getBean();
-        return (BasicEvent) event;
-    }
-
-    private void nextMonth() {
-        rollMonth(1);
-    }
-
-    private void previousMonth() {
-        rollMonth(-1);
-    }
-
-    private void nextWeek() {
-        rollWeek(1);
-    }
-
-    private void previousWeek() {
-        rollWeek(-1);
-    }
-
-    private void nextDay() {
-        rollDate(1);
-    }
-
-    private void previousDay() {
-        rollDate(-1);
-    }
-
-    private void rollMonth(int direction) {
-        calendar.setTime(currentMonthsFirstDate);
-        calendar.add(GregorianCalendar.MONTH, direction);
-        resetTime(false);
-        currentMonthsFirstDate = calendar.getTime();
-        calendarComponent.setStartDate(currentMonthsFirstDate);
-
-        updateCaptionLabel();
-
-        calendar.add(GregorianCalendar.MONTH, 1);
-        calendar.add(GregorianCalendar.DATE, -1);
-        resetCalendarTime(true);
-    }
-
-    private void rollWeek(int direction) {
-        calendar.add(GregorianCalendar.WEEK_OF_YEAR, direction);
-        calendar.set(GregorianCalendar.DAY_OF_WEEK,
-                calendar.getFirstDayOfWeek());
-        resetCalendarTime(false);
-        resetTime(true);
-        calendar.add(GregorianCalendar.DATE, 6);
-        calendarComponent.setEndDate(calendar.getTime());
-    }
-
-    private void rollDate(int direction) {
-        calendar.add(GregorianCalendar.DATE, direction);
-        resetCalendarTime(false);
-        resetCalendarTime(true);
-    }
-
-    private void updateCaptionLabel() {
-        DateFormatSymbols s = new DateFormatSymbols(getLocale());
-        String month = s.getShortMonths()[calendar.get(GregorianCalendar.MONTH)];
-        captionLabel.setValue(month + " "
-                + calendar.get(GregorianCalendar.YEAR));
-    }
-
-    private CalendarTestEvent getNewEvent(String caption, Date start, Date end) {
-        CalendarTestEvent event = new CalendarTestEvent();
-        event.setCaption(caption);
-        event.setStart(start);
-        event.setEnd(end);
-
-        return event;
-    }
-
-    /*
-     * Switch the view to week view.
-     */
-    public void switchToWeekView() {
-        viewMode = Mode.WEEK;
-        weekButton.setVisible(true);
-        monthButton.setVisible(true);
-    }
-
-    /*
-     * Switch the Calendar component's start and end date range to the target
-     * month only. (sample range: 01.01.2010 00:00.000 - 31.01.2010 23:59.999)
-     */
-    public void switchToMonthView() {
-        viewMode = Mode.MONTH;
-
-        calendar.setTime(currentMonthsFirstDate);
-        calendarComponent.setStartDate(currentMonthsFirstDate);
-
-        updateCaptionLabel();
-
-        calendar.add(GregorianCalendar.MONTH, 1);
-        calendar.add(GregorianCalendar.DATE, -1);
-        resetCalendarTime(true);
-    }
-
-    /*
-     * Switch to day view (week view with a single day visible).
-     */
-    public void switchToDayView() {
-        viewMode = Mode.DAY;
-    }
-
-    private void resetCalendarTime(boolean resetEndTime) {
-        resetTime(resetEndTime);
-        if (resetEndTime) {
-            calendarComponent.setEndDate(calendar.getTime());
-        } else {
-            calendarComponent.setStartDate(calendar.getTime());
-            updateCaptionLabel();
-        }
-    }
-
-    /*
-     * Resets the calendar time (hour, minute second and millisecond) either to
-     * zero or maximum value.
-     */
-    private void resetTime(boolean max) {
-        if (max) {
-            calendar.set(GregorianCalendar.HOUR_OF_DAY,
-                    calendar.getMaximum(GregorianCalendar.HOUR_OF_DAY));
-            calendar.set(GregorianCalendar.MINUTE,
-                    calendar.getMaximum(GregorianCalendar.MINUTE));
-            calendar.set(GregorianCalendar.SECOND,
-                    calendar.getMaximum(GregorianCalendar.SECOND));
-            calendar.set(GregorianCalendar.MILLISECOND,
-                    calendar.getMaximum(GregorianCalendar.MILLISECOND));
-        } else {
-            calendar.set(GregorianCalendar.HOUR_OF_DAY, 0);
-            calendar.set(GregorianCalendar.MINUTE, 0);
-            calendar.set(GregorianCalendar.SECOND, 0);
-            calendar.set(GregorianCalendar.MILLISECOND, 0);
-        }
-    }
-
-    private static Date getEndOfDay(java.util.Calendar calendar, Date date) {
-        java.util.Calendar calendarClone = (java.util.Calendar) calendar
-                .clone();
-
-        calendarClone.setTime(date);
-        calendarClone.set(java.util.Calendar.MILLISECOND,
-                calendarClone.getActualMaximum(java.util.Calendar.MILLISECOND));
-        calendarClone.set(java.util.Calendar.SECOND,
-                calendarClone.getActualMaximum(java.util.Calendar.SECOND));
-        calendarClone.set(java.util.Calendar.MINUTE,
-                calendarClone.getActualMaximum(java.util.Calendar.MINUTE));
-        calendarClone.set(java.util.Calendar.HOUR,
-                calendarClone.getActualMaximum(java.util.Calendar.HOUR));
-        calendarClone.set(java.util.Calendar.HOUR_OF_DAY,
-                calendarClone.getActualMaximum(java.util.Calendar.HOUR_OF_DAY));
-
-        return calendarClone.getTime();
-    }
+		if (parameters.containsKey("width")) {
+			calendarWidth = parameters.get("width")[0];
+		}
+
+		if (parameters.containsKey("height")) {
+			calendarHeight = parameters.get("height")[0];
+		}
+
+		if (parameters.containsKey("firstDay")) {
+			firstDay = Integer.parseInt(parameters.get("firstDay")[0]);
+		}
+
+		if (parameters.containsKey("lastDay")) {
+			lastDay = Integer.parseInt(parameters.get("lastDay")[0]);
+		}
+
+		if (parameters.containsKey("firstHour")) {
+			firstHour = Integer.parseInt(parameters.get("firstHour")[0]);
+		}
+
+		if (parameters.containsKey("lastHour")) {
+			lastHour = Integer.parseInt(parameters.get("lastHour")[0]);
+		}
+
+		if (parameters.containsKey("locale")) {
+			String localeArray[] = parameters.get("locale")[0].split("_");
+			defaultLocale = new Locale(localeArray[0], localeArray[1]);
+			setLocale(defaultLocale);
+		}
+
+		if (parameters.containsKey(("secondsResolution"))) {
+			useSecondResolution = true;
+		}
+	}
+
+	public void initContent() {
+		setLocale(Locale.GERMAN);
+
+		initCalendar();
+		initLayoutContent();
+		addInitialEvents();
+	}
+
+	private Date resolveFirstDateOfWeek(Date today, java.util.Calendar currentCalendar) {
+		int firstDayOfWeek = currentCalendar.getFirstDayOfWeek();
+		currentCalendar.setTime(today);
+		while (firstDayOfWeek != currentCalendar.get(java.util.Calendar.DAY_OF_WEEK)) {
+			currentCalendar.add(java.util.Calendar.DATE, -1);
+		}
+		return currentCalendar.getTime();
+	}
+
+	private Date resolveLastDateOfWeek(Date today, java.util.Calendar currentCalendar) {
+		currentCalendar.setTime(today);
+		currentCalendar.add(java.util.Calendar.DATE, 1);
+		int firstDayOfWeek = currentCalendar.getFirstDayOfWeek();
+		// Roll to weeks last day using firstdayofweek. Roll until FDofW is
+		// found and then roll back one day.
+		while (firstDayOfWeek != currentCalendar.get(java.util.Calendar.DAY_OF_WEEK)) {
+			currentCalendar.add(java.util.Calendar.DATE, 1);
+		}
+		currentCalendar.add(java.util.Calendar.DATE, -1);
+		return currentCalendar.getTime();
+	}
+
+	private void renderEvents() {
+		Instant instant = Instant.ofEpochMilli(calendarComponent.getStartDate().getTime());
+		LocalDate startDate = LocalDateTime.ofInstant(instant, ZoneId.systemDefault()).toLocalDate();
+
+		Period period = Period.between(startDate, startDate.plusDays(7));
+
+		// List<LectureEvent> lectureEvents =
+		// this.calendarApplicationService.findLectureEventsInPeriod(period);
+	}
+
+	private void addInitialEvents() {
+		StudentClass studentClass = new StudentClass(new StudentClassId("TINF13B4"));
+		this.studentClassRepository.create(studentClass);
+
+		Lecture lecture = this.lectureApplicationService.createLecture("TEST", studentClass.getId());
+
+		LectureEvent lectureEvent = this.calendarApplicationService.scheduleLectureEvent(lecture.getId(), LocalDate.now(),
+				LocalTime.of(8, 0), LocalTime.of(11, 0));
+
+		Date originalDate = calendar.getTime();
+		Date today = getToday();
+
+		// Add a event that last a whole week
+
+		Date start = resolveFirstDateOfWeek(today, calendar);
+		Date end = resolveLastDateOfWeek(today, calendar);
+		CalendarTestEvent event = getNewEvent("Whole week event", start, end);
+		event.setAllDay(true);
+		event.setStyleName("color4");
+		event.setDescription("Description for the whole week event.");
+		dataSource.addEvent(event);
+
+		// Add a allday event
+		calendar.setTime(start);
+		calendar.add(GregorianCalendar.DATE, 3);
+		start = calendar.getTime();
+		end = start;
+		event = getNewEvent("Allday event", start, end);
+		event.setAllDay(true);
+		event.setDescription("Some description.");
+		event.setStyleName("color3");
+		dataSource.addEvent(event);
+
+		// Add a second allday event
+		calendar.add(GregorianCalendar.DATE, 1);
+		start = calendar.getTime();
+		end = start;
+		event = getNewEvent("Second allday event", start, end);
+		event.setAllDay(true);
+		event.setDescription("Some description.");
+		event.setStyleName("color2");
+		dataSource.addEvent(event);
+
+		calendar.add(GregorianCalendar.DATE, -3);
+		calendar.set(GregorianCalendar.HOUR_OF_DAY, 9);
+		calendar.set(GregorianCalendar.MINUTE, 30);
+		start = calendar.getTime();
+		calendar.add(GregorianCalendar.HOUR_OF_DAY, 5);
+		calendar.set(GregorianCalendar.MINUTE, 0);
+		end = calendar.getTime();
+		event = getNewEvent("Appointment", start, end);
+		event.setWhere("Office");
+		event.setStyleName("color1");
+		event.setDescription("A longer description, which should display correctly.");
+		dataSource.addEvent(event);
+
+		calendar.add(GregorianCalendar.DATE, 1);
+		calendar.set(GregorianCalendar.HOUR_OF_DAY, 11);
+		calendar.set(GregorianCalendar.MINUTE, 0);
+		start = calendar.getTime();
+		calendar.add(GregorianCalendar.HOUR_OF_DAY, 8);
+		end = calendar.getTime();
+		event = getNewEvent("Training", start, end);
+		event.setStyleName("color2");
+		dataSource.addEvent(event);
+
+		calendar.add(GregorianCalendar.DATE, 4);
+		calendar.set(GregorianCalendar.HOUR_OF_DAY, 9);
+		calendar.set(GregorianCalendar.MINUTE, 0);
+		start = calendar.getTime();
+		calendar.add(GregorianCalendar.HOUR_OF_DAY, 9);
+		end = calendar.getTime();
+		event = getNewEvent("Free time", start, end);
+		dataSource.addEvent(event);
+
+		calendar.setTime(originalDate);
+	}
+
+	private void initLayoutContent() {
+		initNavigationButtons();
+		initAddNewEventButton();
+
+		HorizontalLayout hl = new HorizontalLayout();
+		hl.setWidth("100%");
+		hl.setSpacing(true);
+		hl.setMargin(new MarginInfo(false, false, true, false));
+		hl.addComponent(prevButton);
+		hl.addComponent(captionLabel);
+		hl.addComponent(monthButton);
+		hl.addComponent(weekButton);
+		hl.addComponent(nextButton);
+		hl.setComponentAlignment(prevButton, Alignment.MIDDLE_LEFT);
+		hl.setComponentAlignment(captionLabel, Alignment.MIDDLE_CENTER);
+		hl.setComponentAlignment(monthButton, Alignment.MIDDLE_CENTER);
+		hl.setComponentAlignment(weekButton, Alignment.MIDDLE_CENTER);
+		hl.setComponentAlignment(nextButton, Alignment.MIDDLE_RIGHT);
+
+		monthButton.setVisible(true);
+		weekButton.setVisible(true);
+
+		HorizontalLayout controlPanel = new HorizontalLayout();
+		controlPanel.setSpacing(true);
+		controlPanel.setMargin(new MarginInfo(false, false, true, false));
+		controlPanel.setWidth("100%");
+		controlPanel.addComponent(addNewEvent);
+		controlPanel.setComponentAlignment(addNewEvent, Alignment.MIDDLE_LEFT);
+
+		GridLayout layout = (GridLayout) getContent();
+		layout.addComponent(controlPanel);
+		layout.addComponent(hl);
+		layout.addComponent(calendarComponent);
+		layout.setRowExpandRatio(layout.getRows() - 1, 1.0f);
+	}
+
+	private void initNavigationButtons() {
+		monthButton = new Button("Month view", new ClickListener() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void buttonClick(ClickEvent event) {
+				switchToMonthView();
+			}
+		});
+
+		weekButton = new Button("Week view", new ClickListener() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void buttonClick(ClickEvent event) {
+				// simulate week click
+				WeekClickHandler handler = (WeekClickHandler) calendarComponent.getHandler(WeekClick.EVENT_ID);
+				handler.weekClick(new WeekClick(calendarComponent, calendar.get(GregorianCalendar.WEEK_OF_YEAR),
+						calendar.get(GregorianCalendar.YEAR)));
+			}
+		});
+
+		nextButton = new Button("Next", new Button.ClickListener() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void buttonClick(ClickEvent event) {
+				handleNextButtonClick();
+			}
+		});
+
+		prevButton = new Button("Prev", new Button.ClickListener() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void buttonClick(ClickEvent event) {
+				handlePreviousButtonClick();
+			}
+		});
+	}
+
+	public void initAddNewEventButton() {
+		addNewEvent = new Button("Add new event");
+		addNewEvent.addClickListener(new Button.ClickListener() {
+
+			private static final long serialVersionUID = -8307244759142541067L;
+
+			@Override
+			public void buttonClick(ClickEvent event) {
+				Date start = getToday();
+				start.setHours(0);
+				start.setMinutes(0);
+				start.setSeconds(0);
+
+				Date end = getEndOfDay(calendar, start);
+
+				showEventPopup(createNewEvent(start, end), true);
+			}
+		});
+	}
+
+	private void initFormFields(Layout formLayout, Class<? extends CalendarEvent> eventClass) {
+
+		startDateField = createDateField("Start date");
+		endDateField = createDateField("End date");
+
+		final CheckBox allDayField = createCheckBox("All-day");
+		allDayField.addValueChangeListener(new Property.ValueChangeListener() {
+
+			private static final long serialVersionUID = -7104996493482558021L;
+
+			@Override
+			public void valueChange(ValueChangeEvent event) {
+				Object value = event.getProperty().getValue();
+				if (value instanceof Boolean && Boolean.TRUE.equals(value)) {
+					setFormDateResolution(Resolution.DAY);
+
+				} else {
+					setFormDateResolution(Resolution.MINUTE);
+				}
+			}
+
+		});
+
+		captionField = createTextField("Caption");
+		final TextField whereField = createTextField("Where");
+		final TextArea descriptionField = createTextArea("Description");
+		descriptionField.setRows(3);
+
+		final ComboBox styleNameField = createStyleNameComboBox();
+
+		formLayout.addComponent(startDateField);
+		formLayout.addComponent(endDateField);
+		formLayout.addComponent(allDayField);
+		formLayout.addComponent(captionField);
+		if (eventClass == CalendarTestEvent.class) {
+			formLayout.addComponent(whereField);
+		}
+		formLayout.addComponent(descriptionField);
+		formLayout.addComponent(styleNameField);
+
+		scheduleEventFieldGroup.bind(startDateField, "start");
+		scheduleEventFieldGroup.bind(endDateField, "end");
+		scheduleEventFieldGroup.bind(captionField, "caption");
+		scheduleEventFieldGroup.bind(descriptionField, "description");
+		if (eventClass == CalendarTestEvent.class) {
+			scheduleEventFieldGroup.bind(whereField, "where");
+		}
+		scheduleEventFieldGroup.bind(styleNameField, "styleName");
+		scheduleEventFieldGroup.bind(allDayField, "allDay");
+	}
+
+	private CheckBox createCheckBox(String caption) {
+		CheckBox cb = new CheckBox(caption);
+		cb.setImmediate(true);
+		return cb;
+	}
+
+	private TextField createTextField(String caption) {
+		TextField f = new TextField(caption);
+		f.setNullRepresentation("");
+		return f;
+	}
+
+	private TextArea createTextArea(String caption) {
+		TextArea f = new TextArea(caption);
+		f.setNullRepresentation("");
+		return f;
+	}
+
+	private DateField createDateField(String caption) {
+		DateField f = new DateField(caption);
+		if (useSecondResolution) {
+			f.setResolution(Resolution.SECOND);
+		} else {
+			f.setResolution(Resolution.MINUTE);
+		}
+		return f;
+	}
+
+	private ComboBox createStyleNameComboBox() {
+		ComboBox s = new ComboBox("Color");
+		s.addContainerProperty("c", String.class, "");
+		s.setItemCaptionPropertyId("c");
+		Item i = s.addItem("color1");
+		i.getItemProperty("c").setValue("Green");
+		i = s.addItem("color2");
+		i.getItemProperty("c").setValue("Blue");
+		i = s.addItem("color3");
+		i.getItemProperty("c").setValue("Red");
+		i = s.addItem("color4");
+		i.getItemProperty("c").setValue("Orange");
+		return s;
+	}
+
+	private void initCalendar() {
+		dataSource = new BasicEventProvider();
+
+		calendarComponent = new Calendar(dataSource);
+		calendarComponent.setLocale(getLocale());
+		calendarComponent.setImmediate(true);
+
+		if (calendarWidth != null || calendarHeight != null) {
+			if (calendarHeight != null) {
+				calendarComponent.setHeight(calendarHeight);
+			}
+			if (calendarWidth != null) {
+				calendarComponent.setWidth(calendarWidth);
+			}
+		} else {
+			calendarComponent.setSizeFull();
+		}
+
+		if (firstHour != null && lastHour != null) {
+			calendarComponent.setFirstVisibleHourOfDay(firstHour);
+			calendarComponent.setLastVisibleHourOfDay(lastHour);
+		}
+
+		if (firstDay != null && lastDay != null) {
+			calendarComponent.setFirstVisibleDayOfWeek(firstDay);
+			calendarComponent.setLastVisibleDayOfWeek(lastDay);
+		}
+
+		Date today = getToday();
+		calendar = new GregorianCalendar(getLocale());
+		calendar.setTime(today);
+
+		currentMonthsFirstDate = calendar.getTime();
+
+		updateCaptionLabel();
+
+		addCalendarEventListeners();
+	}
+
+	private Date getToday() {
+		if (testBench) {
+			GregorianCalendar testDate = new GregorianCalendar();
+			testDate.set(GregorianCalendar.YEAR, 2000);
+			testDate.set(GregorianCalendar.MONTH, 0);
+			testDate.set(GregorianCalendar.DATE, 10);
+			testDate.set(GregorianCalendar.HOUR_OF_DAY, 0);
+			testDate.set(GregorianCalendar.MINUTE, 0);
+			testDate.set(GregorianCalendar.SECOND, 0);
+			testDate.set(GregorianCalendar.MILLISECOND, 0);
+			return testDate.getTime();
+		}
+		return new Date();
+	}
+
+	@SuppressWarnings("serial")
+	private void addCalendarEventListeners() {
+		// Register week clicks by changing the schedules start and end dates.
+		calendarComponent.setHandler(new BasicWeekClickHandler() {
+
+			@Override
+			public void weekClick(WeekClick event) {
+				// let BasicWeekClickHandler handle calendar dates, and update
+				// only the other parts of UI here
+				super.weekClick(event);
+				updateCaptionLabel();
+				switchToWeekView();
+			}
+		});
+
+		calendarComponent.setHandler(new EventClickHandler() {
+
+			@Override
+			public void eventClick(EventClick event) {
+				showEventPopup(event.getCalendarEvent(), false);
+			}
+		});
+
+		calendarComponent.setHandler(new BasicDateClickHandler() {
+
+			@Override
+			public void dateClick(DateClickEvent event) {
+				// let BasicDateClickHandler handle calendar dates, and update
+				// only the other parts of UI here
+				super.dateClick(event);
+				switchToDayView();
+			}
+		});
+
+		calendarComponent.setHandler(new RangeSelectHandler() {
+
+			@Override
+			public void rangeSelect(RangeSelectEvent event) {
+				handleRangeSelect(event);
+			}
+		});
+	}
+
+	private void handleNextButtonClick() {
+		switch (viewMode) {
+		case MONTH:
+			nextMonth();
+			break;
+		case WEEK:
+			nextWeek();
+			break;
+		case DAY:
+			nextDay();
+			break;
+		}
+	}
+
+	private void handlePreviousButtonClick() {
+		switch (viewMode) {
+		case MONTH:
+			previousMonth();
+			break;
+		case WEEK:
+			previousWeek();
+			break;
+		case DAY:
+			previousDay();
+			break;
+		}
+	}
+
+	private void handleRangeSelect(RangeSelectEvent event) {
+		Date start = event.getStart();
+		Date end = event.getEnd();
+
+		/*
+		 * If a range of dates is selected in monthly mode, we want it to end at
+		 * the end of the last day.
+		 */
+		if (event.isMonthlyMode()) {
+			end = getEndOfDay(calendar, end);
+		}
+
+		showEventPopup(createNewEvent(start, end), true);
+	}
+
+	private void showEventPopup(CalendarEvent event, boolean newEvent) {
+		if (event == null) {
+			return;
+		}
+
+		updateCalendarEventPopup(newEvent);
+		updateCalendarEventForm(event);
+
+		if (!getWindows().contains(scheduleEventPopup)) {
+			addWindow(scheduleEventPopup);
+		}
+	}
+
+	/* Initializes a modal window to edit schedule event. */
+	private void createCalendarEventPopup() {
+		VerticalLayout layout = new VerticalLayout();
+		layout.setMargin(true);
+		layout.setSpacing(true);
+
+		scheduleEventPopup = new Window(null, layout);
+		scheduleEventPopup.setWidth("400px");
+		scheduleEventPopup.setModal(true);
+		scheduleEventPopup.center();
+
+		layout.addComponent(scheduleEventFieldLayout);
+
+		applyEventButton = new Button("Apply", new ClickListener() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void buttonClick(ClickEvent event) {
+				try {
+					commitCalendarEvent();
+				} catch (CommitException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		Button cancel = new Button("Cancel", new ClickListener() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void buttonClick(ClickEvent event) {
+				discardCalendarEvent();
+			}
+		});
+		deleteEventButton = new Button("Delete", new ClickListener() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void buttonClick(ClickEvent event) {
+				deleteCalendarEvent();
+			}
+		});
+		scheduleEventPopup.addCloseListener(new Window.CloseListener() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void windowClose(Window.CloseEvent e) {
+				discardCalendarEvent();
+			}
+		});
+
+		HorizontalLayout buttons = new HorizontalLayout();
+		buttons.setSpacing(true);
+		buttons.addComponent(deleteEventButton);
+		buttons.addComponent(applyEventButton);
+		buttons.addComponent(cancel);
+		layout.addComponent(buttons);
+		layout.setComponentAlignment(buttons, Alignment.BOTTOM_RIGHT);
+	}
+
+	private void updateCalendarEventPopup(boolean newEvent) {
+		if (scheduleEventPopup == null) {
+			createCalendarEventPopup();
+		}
+
+		if (newEvent) {
+			scheduleEventPopup.setCaption("New event");
+		} else {
+			scheduleEventPopup.setCaption("Edit event");
+		}
+
+		deleteEventButton.setVisible(!newEvent);
+		deleteEventButton.setEnabled(!calendarComponent.isReadOnly());
+		applyEventButton.setEnabled(!calendarComponent.isReadOnly());
+	}
+
+	private void updateCalendarEventForm(CalendarEvent event) {
+		BeanItem<CalendarEvent> item = new BeanItem<CalendarEvent>(event);
+		scheduleEventFieldLayout.removeAllComponents();
+		scheduleEventFieldGroup = new FieldGroup();
+		initFormFields(scheduleEventFieldLayout, event.getClass());
+		scheduleEventFieldGroup.setBuffered(true);
+		scheduleEventFieldGroup.setItemDataSource(item);
+	}
+
+	private void setFormDateResolution(Resolution resolution) {
+		if (startDateField != null && endDateField != null) {
+			startDateField.setResolution(resolution);
+			endDateField.setResolution(resolution);
+		}
+	}
+
+	private CalendarEvent createNewEvent(Date startDate, Date endDate) {
+
+		BasicEvent event = new BasicEvent();
+		event.setCaption("");
+		event.setStart(startDate);
+		event.setEnd(endDate);
+		event.setStyleName("color1");
+		return event;
+	}
+
+	/* Removes the event from the data source and fires change event. */
+	private void deleteCalendarEvent() {
+		BasicEvent event = getFormCalendarEvent();
+		if (dataSource.containsEvent(event)) {
+			dataSource.removeEvent(event);
+		}
+		removeWindow(scheduleEventPopup);
+	}
+
+	/* Adds/updates the event in the data source and fires change event. */
+	private void commitCalendarEvent() throws CommitException {
+		scheduleEventFieldGroup.commit();
+		BasicEvent event = getFormCalendarEvent();
+		if (event.getEnd() == null) {
+			event.setEnd(event.getStart());
+		}
+		if (!dataSource.containsEvent(event)) {
+			dataSource.addEvent(event);
+		}
+
+		removeWindow(scheduleEventPopup);
+	}
+
+	private void discardCalendarEvent() {
+		scheduleEventFieldGroup.discard();
+		removeWindow(scheduleEventPopup);
+	}
+
+	@SuppressWarnings("unchecked")
+	private BasicEvent getFormCalendarEvent() {
+		BeanItem<CalendarEvent> item = (BeanItem<CalendarEvent>) scheduleEventFieldGroup.getItemDataSource();
+		CalendarEvent event = item.getBean();
+		return (BasicEvent) event;
+	}
+
+	private void nextMonth() {
+		rollMonth(1);
+	}
+
+	private void previousMonth() {
+		rollMonth(-1);
+	}
+
+	private void nextWeek() {
+		rollWeek(1);
+	}
+
+	private void previousWeek() {
+		rollWeek(-1);
+	}
+
+	private void nextDay() {
+		rollDate(1);
+	}
+
+	private void previousDay() {
+		rollDate(-1);
+	}
+
+	private void rollMonth(int direction) {
+		calendar.setTime(currentMonthsFirstDate);
+		calendar.add(GregorianCalendar.MONTH, direction);
+		resetTime(false);
+		currentMonthsFirstDate = calendar.getTime();
+		calendarComponent.setStartDate(currentMonthsFirstDate);
+
+		updateCaptionLabel();
+
+		calendar.add(GregorianCalendar.MONTH, 1);
+		calendar.add(GregorianCalendar.DATE, -1);
+		resetCalendarTime(true);
+	}
+
+	private void rollWeek(int direction) {
+		calendar.add(GregorianCalendar.WEEK_OF_YEAR, direction);
+		calendar.set(GregorianCalendar.DAY_OF_WEEK, calendar.getFirstDayOfWeek());
+		resetCalendarTime(false);
+		resetTime(true);
+		calendar.add(GregorianCalendar.DATE, 6);
+		calendarComponent.setEndDate(calendar.getTime());
+	}
+
+	private void rollDate(int direction) {
+		calendar.add(GregorianCalendar.DATE, direction);
+		resetCalendarTime(false);
+		resetCalendarTime(true);
+	}
+
+	private void updateCaptionLabel() {
+		DateFormatSymbols s = new DateFormatSymbols(getLocale());
+		String month = s.getShortMonths()[calendar.get(GregorianCalendar.MONTH)];
+		captionLabel.setValue(month + " " + calendar.get(GregorianCalendar.YEAR));
+	}
+
+	private CalendarTestEvent getNewEvent(String caption, Date start, Date end) {
+		CalendarTestEvent event = new CalendarTestEvent();
+		event.setCaption(caption);
+		event.setStart(start);
+		event.setEnd(end);
+
+		return event;
+	}
+
+	/*
+	 * Switch the view to week view.
+	 */
+	public void switchToWeekView() {
+		viewMode = Mode.WEEK;
+		weekButton.setVisible(true);
+		monthButton.setVisible(true);
+	}
+
+	/*
+	 * Switch the Calendar component's start and end date range to the target
+	 * month only. (sample range: 01.01.2010 00:00.000 - 31.01.2010 23:59.999)
+	 */
+	public void switchToMonthView() {
+		viewMode = Mode.MONTH;
+
+		calendar.setTime(currentMonthsFirstDate);
+		calendarComponent.setStartDate(currentMonthsFirstDate);
+
+		updateCaptionLabel();
+
+		calendar.add(GregorianCalendar.MONTH, 1);
+		calendar.add(GregorianCalendar.DATE, -1);
+		resetCalendarTime(true);
+	}
+
+	/*
+	 * Switch to day view (week view with a single day visible).
+	 */
+	public void switchToDayView() {
+		viewMode = Mode.DAY;
+	}
+
+	private void resetCalendarTime(boolean resetEndTime) {
+		resetTime(resetEndTime);
+		if (resetEndTime) {
+			calendarComponent.setEndDate(calendar.getTime());
+		} else {
+			calendarComponent.setStartDate(calendar.getTime());
+			updateCaptionLabel();
+		}
+	}
+
+	/*
+	 * Resets the calendar time (hour, minute second and millisecond) either to
+	 * zero or maximum value.
+	 */
+	private void resetTime(boolean max) {
+		if (max) {
+			calendar.set(GregorianCalendar.HOUR_OF_DAY, calendar.getMaximum(GregorianCalendar.HOUR_OF_DAY));
+			calendar.set(GregorianCalendar.MINUTE, calendar.getMaximum(GregorianCalendar.MINUTE));
+			calendar.set(GregorianCalendar.SECOND, calendar.getMaximum(GregorianCalendar.SECOND));
+			calendar.set(GregorianCalendar.MILLISECOND, calendar.getMaximum(GregorianCalendar.MILLISECOND));
+		} else {
+			calendar.set(GregorianCalendar.HOUR_OF_DAY, 0);
+			calendar.set(GregorianCalendar.MINUTE, 0);
+			calendar.set(GregorianCalendar.SECOND, 0);
+			calendar.set(GregorianCalendar.MILLISECOND, 0);
+		}
+	}
+
+	private static Date getEndOfDay(java.util.Calendar calendar, Date date) {
+		java.util.Calendar calendarClone = (java.util.Calendar) calendar.clone();
+
+		calendarClone.setTime(date);
+		calendarClone.set(java.util.Calendar.MILLISECOND,
+				calendarClone.getActualMaximum(java.util.Calendar.MILLISECOND));
+		calendarClone.set(java.util.Calendar.SECOND, calendarClone.getActualMaximum(java.util.Calendar.SECOND));
+		calendarClone.set(java.util.Calendar.MINUTE, calendarClone.getActualMaximum(java.util.Calendar.MINUTE));
+		calendarClone.set(java.util.Calendar.HOUR, calendarClone.getActualMaximum(java.util.Calendar.HOUR));
+		calendarClone.set(java.util.Calendar.HOUR_OF_DAY,
+				calendarClone.getActualMaximum(java.util.Calendar.HOUR_OF_DAY));
+
+		return calendarClone.getTime();
+	}
 }
-
-

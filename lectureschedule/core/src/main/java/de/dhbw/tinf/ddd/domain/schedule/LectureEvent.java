@@ -4,24 +4,24 @@ import de.dhbw.tinf.ddd.domain.lecture.Lecture;
 
 public class LectureEvent {
 
-	private LectureEventId lectureEventId;
+	private LectureEventId id;
 
 	private Lecture lecture;
 	private LectureTime lectureTime;
 
+	protected LectureEvent() {
+	}
+	
 	public LectureEvent(LectureEventId lectureEventId, Lecture lecture, LectureTime lectureTime) {
 		super();
-		this.lectureEventId = lectureEventId;
+		this.id = lectureEventId;
 
 		setLecture(lecture);
 		setLectureTime(lectureTime);
 	}
 
-	protected LectureEvent() {
-	}
-
-	public LectureEventId getLectureEventId() {
-		return lectureEventId;
+	public LectureEventId getId() {
+		return id;
 	}
 
 	public Lecture getLecture() {

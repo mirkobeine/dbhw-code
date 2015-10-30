@@ -1,30 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<entity-mappings version="1.0"
-	xmlns="http://java.sun.com/xml/ns/persistence/orm" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm orm_1_0.xsd">
+<entity-mappings xmlns="http://xmlns.jcp.org/xml/ns/persistence/orm"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence/orm
+        http://xmlns.jcp.org/xml/ns/persistence/orm_2_1.xsd"
+	version="2.1">
+
 	<description>The minimal mappings for a persistent entity in XML.
 	</description>
+
+	<entity name="StudentClass" class="de.dhbw.tinf.ddd.domain.studentclass.StudentClass"
+		access="FIELD">
+		<attributes>
+			<embedded-id name="id" />
+		</attributes>
+	</entity>
+
 	<entity name="Lecture" class="de.dhbw.tinf.ddd.domain.lecture.Lecture"
 		access="FIELD">
 		<attributes>
 			<id name="id">
-				<generated-value />
+				<generated-value strategy="TABLE" />
 			</id>
-			<basic name="name">
-				<column name="name" />
-			</basic>
-			<transient name="studentClass" />
+			<basic name="name" />
+			<many-to-one name="studentClass" />
 		</attributes>
 	</entity>
+
 	<entity name="LectureEvent" class="de.dhbw.tinf.ddd.domain.schedule.LectureEvent"
 		access="FIELD">
 		<attributes>
-			<embedded-id name="lectureEventId" />
-			<transient name="lecture" />
-			<transient name="lectureTime" />
+			<embedded-id name="id" />
+			<many-to-one name="lecture" />
+			<embedded name="lectureTime" />
 		</attributes>
 	</entity>
-	<embeddable class="de.dhbw.tinf.ddd.domain.schedule.LectureEventId" access="FIELD">
+
+	<embeddable class="de.dhbw.tinf.ddd.domain.schedule.LectureTime"
+		access="FIELD">
+		<attributes>
+			<basic name="lectureDay" />
+			<basic name="beginsAt" />
+			<basic name="endsAt" />
+		</attributes>
+	</embeddable>
+
+	<embeddable class="de.dhbw.tinf.ddd.domain.schedule.LectureEventId"
+		access="FIELD">
+		<attributes>
+			<basic name="id" />
+		</attributes>
+	</embeddable>
+
+	<embeddable class="de.dhbw.tinf.ddd.domain.studentclass.StudentClassId"
+		access="FIELD">
 		<attributes>
 			<basic name="id" />
 		</attributes>
