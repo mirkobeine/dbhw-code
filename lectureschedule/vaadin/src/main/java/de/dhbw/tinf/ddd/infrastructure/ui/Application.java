@@ -25,7 +25,7 @@ public class Application {
 		System.setProperty("java.naming.factory.url", "org.eclipse.jetty.jndi");
 		System.setProperty("java.naming.factory.initial", "org.eclipse.jetty.jndi.InitialContextFactory");
 
-		Server server = new Server(8080);
+		Server server = new Server(80);
 
 		MBeanContainer mbContainer = new MBeanContainer(ManagementFactory.getPlatformMBeanServer());
 		server.addBean(mbContainer);
